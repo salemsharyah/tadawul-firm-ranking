@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tadawul Firm Ranking Dashboard</title>
+<meta name="description" content="Every Tadawul-listed firm scored and ranked within every fiscal year on adjustable financial ratios.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#e8e8e6; --card:#f4f4f2; --track:#e4e1d9; --ink:#1b1b1b; --ink2:#4f4d48; --muted:#8a877e; --rule:#bdb9ae; --grid:#dcd9d0;
+    --amber:#e9a521; --rust:#c4501f; --orange:#d9822b; --neutral:#a8a397;
+    --shadow: 3px 4px 9px rgba(118,128,92,.30);
+    --num: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 18px}
+
+  /* ---------- title bar ---------- */
+  header{padding:18px 0 0}
+  .titlebar{display:flex;align-items:center;gap:16px;padding-bottom:10px;border-bottom:2px solid var(--rule)}
+  .logo{width:58px;height:58px;border:2.5px solid var(--ink);display:grid;place-items:center;flex:none}
+  h1{margin:0;font:400 44px/1.05 "DM Serif Display", Georgia, serif;letter-spacing:.2px}
+  .titlebar .right{margin-left:auto;text-align:right;font-size:12px;color:var(--ink2)}
+  .titlebar .right b{color:var(--ink)}
+  .filternote{font-size:11.5px;color:var(--muted);text-align:right;padding:4px 0 0}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;margin:14px 0 6px}
+  .field label.cap{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-bottom:4px;font-weight:600}
+  select,input[type=text]{padding:7px 9px;border:1px solid var(--rule);border-radius:3px;background:var(--card);font:inherit;color:var(--ink)}
+  .seg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+  .seg button{border:0;background:var(--card);padding:7px 12px;font:inherit;color:var(--ink2);cursor:pointer}
+  .seg button.on{background:var(--ink);color:#fff}
+  .checks{display:flex;gap:14px;flex-wrap:wrap;padding:6px 0}
+  .checks label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13.5px}
+  .checks input{accent-color:var(--rust);width:15px;height:15px}
+  .btn{border:1px solid var(--rule);background:var(--card);border-radius:3px;padding:7px 12px;font:inherit;color:var(--ink);cursor:pointer}
+  .btn:hover,.seg button:hover:not(.on){background:#ebe8e0}
+  .btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .weights{display:none;background:var(--card);box-shadow:var(--shadow);padding:14px 18px 10px;margin:8px 0 6px}
+  .weights.open{display:block}
+  .weights .hint{font-size:12.5px;color:var(--ink2);margin:0 0 8px}
+  .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:6px 26px}
+  .group h4{margin:8px 0 2px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--orange);font-weight:600}
+  .sl{display:grid;grid-template-columns:150px 1fr 66px;align-items:center;gap:8px;margin:2px 0}
+  .sl input.num{width:62px;font:600 14px var(--num);text-align:right;border:1px solid var(--rule);background:#fff;color:var(--ink);padding:3px 4px;border-radius:2px;accent-color:auto}
+  .picker{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+  .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--rule);background:var(--card);padding:4px 10px;border-radius:14px;font-size:12.5px;cursor:pointer;user-select:none}
+  .chip input{accent-color:var(--amber);margin:0}
+  .pickcap{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:600;margin:6px 0 0}
+  .sl input{width:100%;accent-color:var(--amber)}
+  .sl .pct{font:600 14px var(--num);text-align:right}
+  .sl .pct.off{color:var(--muted);font-weight:500}
+  .dir{font-size:10px;color:var(--muted);margin-left:3px}
+  .wsummary{font-size:12.5px;color:var(--ink2);margin:4px 0 0}
+  .wsummary b{color:var(--ink)}
+
+  /* ---------- KPI tiles ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;margin:16px 0 18px}
+  .kpi{background:var(--card);box-shadow:var(--shadow);padding:18px 12px 14px;text-align:center;min-height:112px;display:flex;flex-direction:column;justify-content:center}
+  .kpi .v{font:500 38px/1.05 var(--num);letter-spacing:.3px}
+  .kpi .v.name{font-size:20px;line-height:1.2}
+  .kpi .l{font-size:13px;color:var(--ink2);margin-top:6px}
+  .kpi .s{font-size:11.5px;color:var(--orange);margin-top:2px}
+
+  /* ---------- panels ---------- */
+  .row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:18px}
+  .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:18px}
+  .panel{background:var(--card);box-shadow:var(--shadow);padding:16px 18px 18px;min-width:0}
+  .ph{display:flex;align-items:center;gap:12px;border-bottom:1.5px solid var(--rule);padding-bottom:8px;margin-bottom:12px}
+  .ph svg{flex:none}
+  .ph h2{margin:0;font:400 21px/1.2 "Barlow", sans-serif;color:var(--ink2)}
+  .ph .tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .sub{font-size:12.5px;color:var(--ink2);margin:-4px 0 10px}
+  h3{font-size:14px;font-weight:600;margin:14px 0 8px;color:var(--ink2)}
+
+  /* bar rows (leaderboard, seats, movers) */
+  .bars{display:flex;flex-direction:column;gap:7px}
+  .br{display:grid;grid-template-columns:34px minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:8px;cursor:default}
+  .br.click{cursor:pointer}
+  .br.click:hover .nm{text-decoration:underline}
+  .br .rk{font:600 13px var(--num);color:var(--ink2);text-align:right}
+  .br .nm{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+  .br.sel .nm{font-weight:600}
+  .track{position:relative;height:20px}
+  .bar{position:absolute;top:0;bottom:0;left:0;background:var(--amber)}
+  .bar.neg{background:var(--rust)}
+  .bar .val{position:absolute;left:100%;top:50%;transform:translateY(-50%);padding-left:6px;font:600 12.5px var(--num);white-space:nowrap;color:var(--ink)}
+  .tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+  .br.seat{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 28px}
+  .br.mvr{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 104px}
+  .br .sv{font:600 12.5px var(--num);white-space:nowrap}
+
+  /* donut + big stats */
+  .cov{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:center}
+  .legend{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+  .legend span.sw{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+  .legend b{font:600 14px var(--num);margin-left:4px}
+  .big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center;margin:4px 0 6px}
+  .big .v{font:500 34px/1 var(--num)}
+  .big .l{font-size:12px;color:var(--ink2);margin-top:4px}
+  .big .s{font-size:11.5px;color:var(--orange)}
+
+  /* score drivers (diverging) */
+  .drv{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:center;gap:10px;margin:6px 0}
+  .drv .lab{font-size:12.5px;text-align:right}
+  .drv .lab small{display:block;color:var(--muted);font-size:11.5px}
+  .dtrack{position:relative;height:20px}
+  .dtrack .mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--ink2)}
+  .dtrack .bar{left:auto}
+  .dtrack .val{position:absolute;top:50%;transform:translateY(-50%);font:600 12.5px var(--num);white-space:nowrap}
+  .status{background:#f7e3d8;border-left:4px solid var(--rust);padding:10px 12px;font-size:13px;margin:8px 0}
+
+  /* movers */
+  .mv{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+
+  /* table */
+  .tbl{max-height:460px;overflow:auto;border-top:2px solid var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 9px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  th{font-weight:600;color:var(--ink2);background:var(--card);position:sticky;top:0;z-index:1;border-bottom:1.5px solid var(--rule)}
+  td.l,th.l{text-align:left;white-space:normal}
+  td.sc{font:600 14px var(--num)}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#ece9e1}
+  .count{font-size:12.5px;color:var(--ink2)}
+
+  .chart{width:100%;height:300px}
+  .banner{display:none;background:#f7e3d8;border-left:4px solid var(--rust);padding:12px 14px;margin:12px 0}
+  #tip{position:fixed;pointer-events:none;z-index:50;background:#fff;border:1px solid var(--rule);box-shadow:0 4px 14px rgba(0,0,0,.12);padding:8px 10px;font-size:12.5px;line-height:1.4;display:none;max-width:300px}
+  footer{color:var(--ink2);font-size:12px;padding:6px 0 34px}
+  footer h3{color:var(--ink);margin:4px 0 6px}
+  footer ul{margin:0;padding-left:18px}
+
+  @media (max-width:1100px){ .row3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:760px){
+    .row3,.row2,.mv{grid-template-columns:minmax(0,1fr)} .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    h1{font-size:30px} .logo{width:44px;height:44px} .titlebar .right{display:none}
+    .cov{grid-template-columns:120px minmax(0,1fr)} .sl{grid-template-columns:120px 1fr 62px}
+    #search{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="titlebar">
+    <div class="logo" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="#1b1b1b" stroke-width="2.2"><circle cx="14" cy="14" r="10"/><line x1="21.5" y1="21.5" x2="31" y2="31"/><line x1="9.5" y1="18" x2="9.5" y2="13"/><line x1="14" y1="18" x2="14" y2="9"/><line x1="18.5" y1="18" x2="18.5" y2="11.5"/></svg>
+    </div>
+    <h1 id="title">Firm Ranking Dashboard</h1>
+    <div class="right"><b>Tadawul-listed firms</b><br>Quality &amp; Resilience screen · FY<span id="hdrYears"></span></div>
+  </div>
+  <div class="filternote" id="filternote"></div>
+</header>
+
+<div class="banner" id="banner"></div>
+
+<section class="controls" aria-label="Filters">
+  <div class="field"><label class="cap" for="year">Fiscal year</label><select id="year"></select></div>
+  <div class="field"><label class="cap">Compare each firm with</label>
+    <div class="seg" id="mode"><button data-v="sector">Sector peers</button><button data-v="market">Whole market</button></div></div>
+  <div class="field"><label class="cap" for="listing">Listing</label><select id="listing"><option value="">All firms</option><option value="main">Main Market (TASI)</option><option value="nomu">Nomu (parallel)</option></select></div>
+  <div class="field"><label class="cap" for="sector">Sector</label><select id="sector"><option value="">All sectors</option></select></div>
+  <div class="field"><label class="cap">Quality gates</label><div class="checks" id="gates"></div></div>
+  <div class="field" style="display:flex;gap:8px"><button class="btn dark" id="toggleW">Adjust ratio weights ▾</button><button class="btn" id="reset">Reset</button></div>
+</section>
+<p class="wsummary" id="wsummary"></p>
+<section class="weights" id="weights" aria-label="Ratio weights">
+  <p class="pickcap">1 · Choose the ratios</p><div class="picker" id="picker"></div>
+  <p class="pickcap">2 · Set each weight — drag the slider or type a number</p>
+  <p class="hint">Weight 0 = not used. <b id="wtotal"></b> <span class="dir">▲ higher is better · ▼ lower is better</span></p>
+  <div class="groups" id="sliders"></div>
+</section>
+
+<section class="kpis">
+  <div class="kpi"><div class="v" id="kRanked">–</div><div class="l">Firms ranked</div><div class="s" id="kRankedS"></div></div>
+  <div class="kpi"><div class="v" id="kScreened">–</div><div class="l">Screened out by gates</div><div class="s" id="kScreenedS"></div></div>
+  <div class="kpi"><div class="v" id="kPersist">–</div><div class="l">Top-decile persistence</div><div class="s" id="kPersistS"></div></div>
+  <div class="kpi"><div class="v" id="kRatios">–</div><div class="l">Ratios in the score</div><div class="s" id="kRatiosS"></div></div>
+  <div class="kpi"><div class="v name" id="kTop">–</div><div class="l">#1 firm this year</div><div class="s" id="kTopS"></div></div>
+</section>
+
+<div class="row3">
+  <section class="panel">
+    <div class="ph">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#1b1b1b" stroke-width="1.8"><path d="M9 4h12v7a6 6 0 0 1-12 0z"/><path d="M9 6H4v2a5 5 0 0 0 5 5M21 6h5v2a5 5 0 0 1-5 5"/><line x1="15" y1="17" x2="15" y2="22"/><path d="M10 26h10l-1-4h-8z"/></svg>
+      <h2>Leaderboard</h2>
+      <div class="tools"><select id="topn" aria-label="Number of firms"><option>10</option><option selected>15</option><option>20</option><option>30</option></select></div>
+    </div>
+    <p class="sub" id="lbSub"></p>
+    <div class="bars" id="leader"></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#1b1b1b" stroke-width="1.8"><circle cx="15" cy="15" r="11"/><path d="M15 4v11h11"/><path d="M15 15l-7.8 7.8"/></svg>
+      <h2>Coverage &amp; sectors</h2>
+    </div>
+    <div class="cov">
+      <svg id="donut" viewBox="0 0 120 120" width="150" height="150" role="img" aria-label="Filings by status"></svg>
+      <div class="legend" id="covLegend"></div>
+    </div>
+    <h3>Seats in the top 50 by sector <span class="dir">(bar = seats · black tick = fair share)</span></h3>
+    <div class="bars" id="seats"></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#1b1b1b" stroke-width="1.8"><rect x="5" y="9" width="12" height="17"/><rect x="17" y="4" width="8" height="22"/><path d="M8 13h2M12 13h2M8 17h2M12 17h2M8 21h2M12 21h2M20 8h2M20 12h2M20 16h2M20 20h2"/></svg>
+      <h2>Selected firm</h2>
+    </div>
+    <select id="firm" style="width:100%" aria-label="Firm"></select>
+    <div class="big" id="firmBig"></div>
+    <div id="firmStatus"></div>
+    <h3>Score drivers <span class="dir">(weight × z-score; right = helps, left = hurts)</span></h3>
+    <div id="drivers"></div>
+  </section>
+</div>
+
+<div class="row2">
+  <section class="panel">
+    <div class="ph">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#1b1b1b" stroke-width="1.8"><path d="M4 26h23M4 26V4"/><path d="M7 20l6-7 5 4 8-10"/><circle cx="13" cy="13" r="1.4" fill="#1b1b1b"/><circle cx="18" cy="17" r="1.4" fill="#1b1b1b"/></svg>
+      <h2>Rank over time</h2>
+    </div>
+    <p class="sub" id="trendSub"></p>
+    <div id="trend" class="chart"></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#1b1b1b" stroke-width="1.8"><path d="M8 25V6M3 11l5-5 5 5"/><path d="M22 5v19M17 19l5 5 5-5"/></svg>
+      <h2>Biggest movers</h2>
+      <div class="tools"><span class="count">from</span><select id="fromYear" aria-label="From year"></select><span class="count" id="toYear"></span></div>
+    </div>
+    <p class="sub">Change in percentile rank for firms ranked in both years. Click a firm to select it.</p>
+    <div class="mv">
+      <div><h3 style="margin-top:0">Climbers <span class="dir">(bar = percentile points gained · label = rank then → now)</span></h3><div class="bars" id="climbers"></div></div>
+      <div><h3>Fallers</h3><div class="bars" id="fallers"></div></div>
+    </div>
+  </section>
+</div>
+
+<section class="panel" style="margin-bottom:18px">
+  <div class="ph">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#1b1b1b" stroke-width="1.8"><rect x="4" y="5" width="22" height="20"/><path d="M4 11h22M4 17h22M12 5v20"/></svg>
+    <h2>Full ranking</h2>
+    <div class="tools"><input type="text" id="search" placeholder="Search firm or ticker…" aria-label="Search"><span class="count" id="tblCount"></span></div>
+  </div>
+  <div class="tbl"><table id="table"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<footer>
+  <h3>Method</h3>
+  <ul id="method"></ul>
+</footer>
+</div>
+<div id="tip"></div>
+
+<script>
+(async function(){
+  const $ = id => document.getElementById(id);
+  let D;
+  try {
+    const res = await fetch("dashboard_data.json", {cache:"no-store"});
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    D = await res.json();
+  } catch (e) {
+    const b = $("banner"); b.style.display = "block";
+    b.innerHTML = "<b>Could not load dashboard_data.json.</b> It must sit in the same folder as this page. If you opened index.html straight from your computer, the browser blocks the data file — open the GitHub Pages link instead. (" + e.message + ")";
+    return;
+  }
+
+  // ---------------- data ----------------
+  const META = D.ratios, K = META.length, YEARS = D.years, MIN_REPORTED = D.settings.min_weight_reported;
+  const GATES = D.gates || [];
+  const rows = D.firms.map(a => ({t:a[0], n:a[1], s:a[2], y:a[3], raw:a[4], zs:a[5], zm:a[6], fails:a[7] || []}));
+  const byYear = {}; for (const r of rows) (byYear[r.y] ||= []).push(r);
+  const sectors = [...new Set(rows.map(r => r.s))].sort();
+  const names = {}; for (const r of rows) names[r.t] = r.n;
+  $("hdrYears").textContent = YEARS[0] + "–" + YEARS[YEARS.length-1];
+
+  const AMBER = "#e9a521", RUST = "#c4501f", NEUTRAL = "#a8a397", INK = "#1b1b1b", INK2 = "#4f4d48", GRID = "#dcd9d0";
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  // Nomu (parallel market) companies use ticker codes 9500–9699; everything else is the Main Market
+  const isNomu = t => t >= 9500 && t <= 9699;
+  const inListing = t => { const v = $("listing").value; return !v || (v === "nomu") === isNomu(t); };
+  const isPct = key => !/(ratio|turnover|debt_to)/.test(key);
+  const fmtRaw = (key, v) => v == null ? "–" : isPct(key) ? (100*v).toFixed(1) + " %" : v.toFixed(2);
+  const ord = n => { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); };
+
+  // ---------------- tooltip ----------------
+  const tip = $("tip"); const TIPS = [];
+  const tipAttr = html => { TIPS.push(html); return ` data-tip="${TIPS.length-1}"`; };
+  document.addEventListener("mousemove", e => {
+    const el = e.target.closest("[data-tip]");
+    if (!el){ tip.style.display = "none"; return; }
+    tip.innerHTML = TIPS[+el.dataset.tip]; tip.style.display = "block";
+    const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8), y = Math.min(e.clientY + 14, window.innerHeight - tip.offsetHeight - 8);
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  });
+
+  // ---------------- controls ----------------
+  for (const y of [...YEARS].reverse()) $("year").add(new Option("FY" + y, y));
+  $("year").value = YEARS[YEARS.length-1];
+  for (const s of sectors) $("sector").add(new Option(s, s));
+  for (const t of Object.keys(names).sort((a,b) => names[a].localeCompare(names[b]))) $("firm").add(new Option(names[t] + " (" + t + ")", t));
+  let selected = D.default_firm in names ? D.default_firm : +Object.keys(names)[0];
+  $("firm").value = String(selected);
+  let mode = D.settings.sector_neutral ? "sector" : "market";
+
+  $("gates").innerHTML = GATES.map((g, j) => `<label><input type="checkbox" id="g${j}">${esc(g.label)}</label>`).join("") || "<span class='count'>none</span>";
+  const groups = [...new Set(META.map(m => m.group))];
+  $("sliders").innerHTML = groups.map(g => `<div class="group"><h4>${esc(g)}</h4>` + META.map((m, i) => m.group !== g ? "" :
+    `<div class="sl"><span>${esc(m.label)}<span class="dir">${m.higher_is_better ? "▲" : "▼"}</span></span>` +
+    `<input type="range" min="0" max="1" step="0.01" id="w${i}" aria-label="${esc(m.label)} weight"><input type="number" class="num" min="0" max="1" step="0.01" id="n${i}" aria-label="${esc(m.label)} weight value"></div>`).join("") + `</div>`).join("");
+  $("picker").innerHTML = META.map((m, i) => `<label class="chip"><input type="checkbox" id="c${i}">${esc(m.label)}</label>`).join("");
+  // show only the rows of chosen ratios (and hide a group heading when none of its ratios is chosen)
+  function showChosen(){
+    META.forEach((m, i) => { $("w" + i).closest(".sl").style.display = $("c" + i).checked ? "" : "none"; });
+    for (const g of $("sliders").children) g.style.display = [...g.querySelectorAll(".sl")].some(r => r.style.display !== "none") ? "" : "none";
+  }
+  function setDefaults(){
+    META.forEach((m, i) => { $("w" + i).value = m.weight; $("n" + i).value = (+m.weight).toFixed(2); $("c" + i).checked = m.weight > 0; });
+    showChosen();
+    GATES.forEach((g, j) => $("g" + j).checked = !!g.on);
+    mode = D.settings.sector_neutral ? "sector" : "market";
+    for (const b of $("mode").children) b.classList.toggle("on", b.dataset.v === mode);
+  }
+  setDefaults();
+
+  // ---------------- scoring (same rules as rank_firms() in the notebook) ----------------
+  let ALL = {}, STATUS = {}, W = null;
+  function currentWeights(){
+    const w = META.map((m, i) => +$("w" + i).value), total = w.reduce((a, b) => a + b, 0);
+    return {w, total, share: w.map(v => total > 0 ? v/total : 0)};
+  }
+  function scoreYear(y, share, gatesOn, m = mode){
+    const out = [], status = {};
+    for (const r of (byYear[y] || [])){
+      if (!inListing(r.t)) continue;
+      const failed = GATES.findIndex((g, j) => gatesOn[j] && r.fails[j]);
+      if (failed >= 0){ status[r.t] = "screened"; r.why = GATES[failed].label.replace("Screen out ", ""); continue; }
+      const z = m === "sector" ? r.zs : r.zm;
+      let score = 0, reported = 0;
+      for (let i = 0; i < K; i++) if (share[i] > 0 && z[i] != null){ score += share[i]*z[i]; reported += share[i]; }
+      if (reported >= MIN_REPORTED - 1e-9){ out.push({r, score}); status[r.t] = "ranked"; } else status[r.t] = "nodata";
+    }
+    out.sort((a, b) => b.score - a.score);
+    let rank = 0;
+    for (let i = 0; i < out.length; i++){ if (i === 0 || out[i].score < out[i-1].score) rank = i + 1; out[i].rank = rank; out[i].pct = 100*(1 - (rank-1)/out.length); }
+    const bySec = {}; for (const o of out) (bySec[o.r.s] ||= []).push(o);
+    for (const list of Object.values(bySec)) list.forEach((o, i) => { o.secRank = i + 1; o.secN = list.length; });
+    if (m === mode) STATUS[y] = status;
+    return out;
+  }
+  function recompute(){
+    W = currentWeights();
+    META.forEach((m, i) => { const el = $("n" + i); if (document.activeElement !== el) el.value = W.w[i].toFixed(2); });
+    $("wtotal").textContent = "Current sum of weights: " + W.total.toFixed(2) + (Math.abs(W.total - 1) < 1e-9 ? " ✓" : " (aim for 1.00)");
+    ALL = {}; STATUS = {};
+    const gatesOn = GATES.map((g, j) => $("g" + j).checked);
+    if (W.total > 0) for (const y of YEARS) ALL[y] = scoreYear(y, W.share, gatesOn);
+    window.__dash = {weights:W, mode, gatesOn, scoredByYear:ALL, status:STATUS};   // exposed for checking
+    redraw();
+  }
+  const inUse = () => META.map((m, i) => i).filter(i => W.share[i] > 0);
+  const hoverHtml = o => `<b>${esc(o.r.n)}</b> (${o.r.t})<br>${esc(o.r.s)}<br>Rank ${o.rank} · score ${o.score.toFixed(2)}<br>` +
+      inUse().map(i => `${esc(META[i].label)}: ${fmtRaw(META[i].key, o.r.raw[i])}`).join("<br>");
+
+  // ---------------- renderers ----------------
+  function header(y){
+    const gatesOn = GATES.filter((g, j) => $("g" + j).checked).length;
+    $("filternote").textContent = `This view: FY${y} · compared with ${mode === "sector" ? "sector peers" : "the whole market"} · ` +
+      `${gatesOn ? gatesOn + " quality gate" + (gatesOn > 1 ? "s" : "") + " on" : "quality gates off"}` + ($("listing").value ? " · " + ($("listing").value === "nomu" ? "Nomu only" : "Main Market only") : "") + ($("sector").value ? " · sector: " + $("sector").value : "");
+    $("wsummary").innerHTML = "<b>Weights:</b> " + inUse().map(i => `${esc(META[i].label)} ${W.w[i].toFixed(2)}`).join(" · ") + ` (sum ${W.total.toFixed(2)})`;
+  }
+  function kpis(y, list){
+    const st = Object.values(STATUS[y] || {}), filings = $("listing").value ? st.length : (D.filings[y] || st.length);
+    const screened = st.filter(s => s === "screened").length;
+    $("kRanked").textContent = list.length.toLocaleString();
+    $("kRankedS").textContent = (100*list.length/filings).toFixed(1) + " % of " + filings + " filings";
+    $("kScreened").textContent = screened;
+    $("kScreenedS").textContent = st.filter(s => s === "nodata").length + " more with too little data";
+    const fwd = ALL[y+1] && ALL[y+1].length, a = fwd ? list : (ALL[y-1] || []), b = fwd ? ALL[y+1] : list;
+    if (a.length && b.length){
+      const topA = a.filter(o => o.pct >= 90).map(o => o.r.t), inB = new Set(b.map(o => o.r.t)), topB = new Set(b.filter(o => o.pct >= 90).map(o => o.r.t));
+      let present = 0, stay = 0; for (const t of topA) if (inB.has(t)){ present++; if (topB.has(t)) stay++; }
+      $("kPersist").textContent = present ? Math.round(100*stay/present) + " %" : "–";
+      $("kPersistS").textContent = (fwd ? `FY${y} → FY${y+1}` : `FY${y-1} → FY${y}`) + " · chance = 10 %";
+    } else { $("kPersist").textContent = "n/a"; $("kPersistS").textContent = "needs two consecutive years"; }
+    $("kRatios").textContent = inUse().length + " of " + K;
+    $("kRatiosS").textContent = [...new Set(inUse().map(i => META[i].group))].join(" · ");
+    $("kTop").textContent = list.length ? list[0].r.n : "–";
+    $("kTopS").textContent = list.length ? list[0].r.s + " · score " + list[0].score.toFixed(2) : "";
+  }
+  function leaderboard(y, list){
+    const sec = $("sector").value, n = +$("topn").value;
+    const top = (sec ? list.filter(o => o.r.s === sec) : list).slice(0, n);
+    $("lbSub").textContent = `Top ${top.length} by quality score · FY${y}` + (sec ? " · " + sec : "") + " · click a firm to select it";
+    const max = Math.max(0.1, ...top.map(o => Math.abs(o.score)));
+    $("leader").innerHTML = top.map(o => {
+      const w = 78 * Math.abs(o.score) / max;
+      return `<div class="br click${o.r.t === selected ? " sel" : ""}" data-firm="${o.r.t}"${tipAttr(hoverHtml(o))}><span class="rk">#${o.rank}</span>` +
+        `<span class="nm">${esc(o.r.n)}</span><div class="track"><div class="bar${o.score < 0 ? " neg" : ""}" style="width:${w}%"><span class="val">${o.score.toFixed(2)}</span></div></div></div>`;
+    }).join("") || "<p class='count'>No ranked firms.</p>";
+  }
+  function coverage(y, list){
+    const st = Object.values(STATUS[y] || {}), total = st.length || 1;
+    const parts = [["Ranked", st.filter(s => s === "ranked").length, AMBER], ["Screened out by gates", st.filter(s => s === "screened").length, RUST], ["Too little data", st.filter(s => s === "nodata").length, NEUTRAL]];
+    let acc = 0; const R = 46, C = 2*Math.PI*R; let arcs = "";
+    for (const [lab, v, col] of parts){ if (!v) continue; const len = C*v/total;
+      arcs += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${col}" stroke-width="20" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 60 60)"${tipAttr(`<b>${lab}</b><br>${v} of ${total} filings (${(100*v/total).toFixed(1)} %)`)}/>`; acc += len; }
+    $("donut").innerHTML = arcs + `<text x="60" y="58" text-anchor="middle" font-family="Barlow Semi Condensed, sans-serif" font-size="22" font-weight="600" fill="${INK}">${(100*parts[0][1]/total).toFixed(0)}%</text>` +
+      `<text x="60" y="74" text-anchor="middle" font-family="Barlow, sans-serif" font-size="10" fill="${INK2}">ranked</text>`;
+    $("covLegend").innerHTML = parts.map(([lab, v, col]) => `<div><span class="sw" style="background:${col}"></span>${lab}<b>${v}</b> <span class="count">(${(100*v/total).toFixed(1)} %)</span></div>`).join("") +
+      `<div class="count" style="margin-top:4px">${total} filings in FY${y}</div>`;
+    // seats in the top 50 by sector vs fair share
+    const top50 = list.slice(0, 50), n = list.length || 1, seat = {}, share = {};
+    for (const o of top50) seat[o.r.s] = (seat[o.r.s] || 0) + 1;
+    for (const o of list) share[o.r.s] = (share[o.r.s] || 0) + 1;
+    const secs = Object.keys(share).map(s => ({s, seats:seat[s] || 0, fair:50*share[s]/n})).sort((a, b) => b.fair - a.fair).slice(0, 9);
+    const max = Math.max(1, ...secs.map(d => Math.max(d.seats, d.fair)));
+    $("seats").innerHTML = secs.map(d => `<div class="br seat"${tipAttr(`<b>${esc(d.s)}</b><br>${d.seats} of 50 top seats<br>fair share ${d.fair.toFixed(1)} seats (${(2*d.fair).toFixed(1)} % of ranked firms)`)}>` +
+      `<span class="nm">${esc(d.s)}</span><div class="track"><div class="bar" style="width:${92*d.seats/max}%"></div>` +
+      `<div class="tick" style="left:${92*d.fair/max}%"></div></div><span class="sv">${d.seats}</span></div>`).join("");
+  }
+  function firmPanel(y){
+    const t = selected, list = ALL[y] || [], o = list.find(o => o.r.t === t), row = (byYear[y] || []).find(r => r.t === t);
+    $("firm").value = String(t);
+    if (!o){
+      $("firmBig").innerHTML = "";
+      const why = !row ? `not listed in FY${y}` : !inListing(t) ? `not in the selected listing (${isNomu(t) ? "Nomu" : "Main Market"})` : STATUS[y][t] === "screened" ? `screened out in FY${y}: ${row.why}` : `not ranked in FY${y}: too little data`;
+      $("firmStatus").innerHTML = `<div class="status"><b>${esc(names[t])}</b> — ${why}.</div>`;
+      $("drivers").innerHTML = "";
+      return;
+    }
+    $("firmStatus").innerHTML = "";
+    $("firmBig").innerHTML =
+      `<div><div class="v">#${o.rank}</div><div class="l">Rank</div><div class="s">of ${list.length} firms</div></div>` +
+      `<div><div class="v">${ord(Math.round(o.pct))}</div><div class="l">Percentile</div><div class="s">FY${y}</div></div>` +
+      `<div><div class="v">#${o.secRank}</div><div class="l">In sector</div><div class="s">of ${o.secN} · ${esc(o.r.s)}</div></div>`;
+    const z = mode === "sector" ? o.r.zs : o.r.zm, used = inUse();
+    const contrib = used.map(i => ({i, c: z[i] == null ? null : W.share[i]*z[i]}));
+    const max = Math.max(0.25, ...contrib.map(d => Math.abs(d.c || 0)));
+    $("drivers").innerHTML = contrib.map(({i, c}) => {
+      const m = META[i], raw = fmtRaw(m.key, o.r.raw[i]);
+      if (c == null) return `<div class="drv"><div class="lab">${esc(m.label)}<small>missing — counted as sector average</small></div><div class="dtrack"><div class="mid"></div></div></div>`;
+      const w = 34*Math.abs(c)/max, pos = c >= 0;   // leave room for the value label
+      const bar = `<div class="bar${pos ? "" : " neg"}" style="${pos ? "left:50%" : "left:" + (50 - w) + "%"};width:${w}%"></div>`;
+      const val = `<span class="val" style="${pos ? "left:calc(50% + " + w + "% + 5px)" : "right:calc(50% + " + w + "% + 5px)"}">${pos ? "+" : "−"}${Math.abs(c).toFixed(2)}</span>`;
+      return `<div class="drv"${tipAttr(`<b>${esc(m.label)}</b>: ${raw}<br>z-score ${z[i].toFixed(2)} × weight ${Math.round(100*W.share[i])} % = ${c >= 0 ? "+" : "−"}${Math.abs(c).toFixed(2)}`)}>` +
+        `<div class="lab">${esc(m.label)}<small>${raw}</small></div><div class="dtrack"><div class="mid"></div>${bar}${val}</div></div>`;
+    }).join("") + `<div class="drv"><div class="lab"><b>Quality score</b></div><div style="font:600 16px var(--num)">${o.score.toFixed(2)}</div></div>`;
+  }
+  function trend(){
+    const t = selected, pts = [];
+    for (const y of YEARS){ const o = (ALL[y] || []).find(o => o.r.t === t); if (o) pts.push({y, o, n:ALL[y].length}); }
+    $("trendSub").textContent = `${names[t]} — percentile in each year it was ranked (100 = best). Labels show the rank.`;
+    Plotly.react("trend", [{type:"scatter", mode:"lines+markers+text", x:pts.map(p => p.y), y:pts.map(p => p.o.pct),
+      text:pts.map(p => "#" + p.o.rank), textposition:"top center", textfont:{size:11, color:INK2, family:"Barlow Semi Condensed, sans-serif"},
+      line:{color:AMBER, width:3}, marker:{size:9, color:AMBER, line:{color:"#fff", width:1.5}}, cliponaxis:false,
+      hovertext:pts.map(p => `<b>${esc(names[t])}</b> FY${p.y}<br>Rank ${p.o.rank} of ${p.n} · ${ord(Math.round(p.o.pct))} percentile<br>score ${p.o.score.toFixed(2)}`), hoverinfo:"text"}],
+      {margin:{l:44, r:16, t:22, b:40}, height:300, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)", showlegend:false,
+       font:{family:"Barlow, sans-serif", size:12, color:INK2},
+       xaxis:{tickmode:"array", tickvals:pts.map(p => p.y), tickangle:-45, gridcolor:"rgba(0,0,0,0)", linecolor:"#bdb9ae"},
+       yaxis:{range:[0, 112], gridcolor:GRID, zeroline:false, title:{text:"Percentile", font:{size:11}}},
+       hoverlabel:{bgcolor:"#fff", bordercolor:"#bdb9ae", font:{color:INK, family:"Barlow, sans-serif"}}}, {displayModeBar:false, responsive:true});
+  }
+  function fillFrom(y){
+    const keep = $("fromYear").value; $("fromYear").innerHTML = "";
+    for (const fy of YEARS.filter(v => v < y)) $("fromYear").add(new Option("FY" + fy, fy));
+    $("fromYear").value = keep && +keep < y ? keep : String(Math.max(YEARS[0], y - 4));
+  }
+  function movers(y){
+    const from = +$("fromYear").value; $("toYear").textContent = "to FY" + y;
+    const prev = new Map((ALL[from] || []).map(o => [o.r.t, o])), d = [];
+    for (const o of (ALL[y] || [])){ const p = prev.get(o.r.t); if (p) d.push({t:o.r.t, n:o.r.n, s:o.r.s, v:o.pct - p.pct, r0:p.rank, r1:o.rank}); }
+    d.sort((a, b) => b.v - a.v);
+    const row = m => `<div class="br click mvr" data-firm="${m.t}"${tipAttr(`<b>${esc(m.n)}</b><br>${esc(m.s)}<br>FY${from} rank ${m.r0} → FY${y} rank ${m.r1}<br>${m.v >= 0 ? "+" : "−"}${Math.abs(m.v).toFixed(0)} percentile points`)}>` +
+      `<span class="nm">${esc(m.n)}</span><div class="track"><div class="bar${m.v < 0 ? " neg" : ""}" style="width:${Math.abs(m.v)}%"></div></div>` +
+      `<span class="sv">#${m.r0} → #${m.r1}</span></div>`;
+    $("climbers").innerHTML = d.slice(0, 5).filter(m => m.v > 0).map(row).join("") || "<p class='count'>None</p>";
+    $("fallers").innerHTML = d.slice(-5).reverse().filter(m => m.v < 0).map(row).join("") || "<p class='count'>None</p>";
+  }
+  function table(y, list){
+    const q = $("search").value.trim().toLowerCase(), sec = $("sector").value, used = inUse();
+    let r = list;
+    if (sec) r = r.filter(o => o.r.s === sec);
+    if (q) r = r.filter(o => o.r.n.toLowerCase().includes(q) || String(o.r.t).includes(q));
+    $("tblCount").textContent = r.length + " firms";
+    // rank under BOTH comparisons, so the table can show sector-peer rank and whole-market rank side by side
+    const gatesOn = GATES.map((g, j) => $("g" + j).checked);
+    const other = scoreYear(y, W.share, gatesOn, mode === "sector" ? "market" : "sector");
+    const otherRank = {}; for (const o of other) otherRank[o.r.t] = o.rank;
+    const rk = o => mode === "sector" ? [o.rank, otherRank[o.r.t]] : [otherRank[o.r.t], o.rank];
+    $("table").tHead.innerHTML = "<tr>" + (sec && mode === "sector"
+      ? `<th>Rank<br><small>in sector</small></th><th class='l'>Firm</th><th>Rank<br><small>${mode === "sector" ? "vs sector peers" : "whole market"}</small></th>`
+      : `<th>Rank<br><small>${mode === "sector" ? "vs sector peers" : "whole market"}</small></th><th class='l'>Firm</th><th>Rank<br><small>in sector</small></th>`) + (mode === "sector" ? "<th>Rank<br><small>whole market</small></th>" : "") + "<th>Ticker</th><th class='l'>Sector</th><th>Score</th><th>Pctl</th>" + used.map(i => `<th>${esc(META[i].label)}</th>`).join("") + "</tr>";
+    $("table").tBodies[0].innerHTML = r.map(o => `<tr data-firm="${o.r.t}">` + (sec && mode === "sector" ? `<td style='font-weight:600'>${o.secRank}</td><td class="l">${esc(o.r.n)}</td><td>${o.rank}</td>`
+           : `<td style='font-weight:600'>${o.rank}</td><td class="l">${esc(o.r.n)}</td><td>${o.secRank}</td>`) + (mode === "sector" ? `<td>${otherRank[o.r.t] ?? "–"}</td>` : "") + `<td>${o.r.t}</td><td class="l">${esc(o.r.s)}</td><td class="sc">${o.score.toFixed(2)}</td><td>${o.pct.toFixed(0)}</td>` +
+      used.map(i => `<td>${fmtRaw(META[i].key, o.r.raw[i])}</td>`).join("") + "</tr>").join("") +
+      // when searching, also list matching firms that were NOT ranked this year, with the reason
+      (q ? (byYear[y] || []).filter(x => inListing(x.t) && (STATUS[y] || {})[x.t] !== "ranked" && (!sec || x.s === sec) &&
+            (x.n.toLowerCase().includes(q) || String(x.t).includes(q))).map(x => {
+          const why = (STATUS[y] || {})[x.t] === "screened" ? "Screened out: " + x.why : "Not ranked: too little data";
+          return `<tr data-firm="${x.t}" style="color:var(--muted)">` + `<td>–</td><td class="l">${esc(x.n)}</td><td>–</td>` + (mode === "sector" ? "<td>–</td>" : "") + `<td>${x.t}</td><td class="l">${esc(x.s)}</td><td colspan="2" style="color:var(--rust);text-align:center">${esc(why)}</td>` +
+            used.map(i => `<td>${fmtRaw(META[i].key, x.raw[i])}</td>`).join("") + "</tr>";
+        }).join("") : "");
+  }
+  function method(){
+    const used = inUse();
+    $("method").innerHTML = [
+      `<b>Quality score</b> = weighted sum of z-scores of the ratios in use: ` + used.map(i => `${esc(META[i].label)} ${Math.round(100*W.share[i])} % ${META[i].higher_is_better ? "(higher is better)" : "(lower is better, sign flipped)"}`).join(", ") + ".",
+      `<b>Normalization</b>: each ratio is winsorized at the 1st/99th percentile within the year, then z = (x − mean) / std is computed ` + (mode === "sector" ? "within the firm's sector in the same year (sectors with fewer than 5 firms use the whole market)." : "across the whole market in the same year.") + " z-scores are capped at ±3.",
+      `<b>Missing data</b>: a missing ratio counts as average (z = 0); a firm is ranked only if it reports ratios worth at least ${Math.round(100*MIN_REPORTED)} % of the total weight.`,
+      `<b>Quality gates</b>: ` + (GATES.length ? GATES.map((g, j) => `${esc(g.label)} — ${$("g" + j).checked ? "on" : "off"}`).join("; ") + ". Negative equity = liabilities larger than assets; one-off profit = a net profit reported together with an operating loss." : "none."),
+      `<b>Data</b>: ${esc(D.source || "tadawul_merged.csv")}. Ranking years ${YEARS[0]}–${YEARS[YEARS.length-1]}. Exported from the capstone notebook on ${esc(D.generated)}.`
+    ].map(s => `<li>${s}</li>`).join("");
+  }
+  function redraw(){
+    TIPS.length = 0;
+    const y = +$("year").value;
+    if (!W || W.total === 0){ $("banner").style.display = "block"; $("banner").textContent = "All weights are 0 — move at least one ratio slider above 0, or click Reset."; $("wsummary").innerHTML = "<b>Weights:</b> none selected"; return; }
+    $("banner").style.display = "none";
+    const list = ALL[y] || [];
+    header(y); kpis(y, list); leaderboard(y, list); coverage(y, list); firmPanel(y); trend(); movers(y); table(y, list); method();
+  }
+  function selectFirm(t){ selected = +t; const y = +$("year").value; firmPanel(y); trend(); leaderboard(y, ALL[y] || []); }
+
+  // ---------------- events ----------------
+  META.forEach((m, i) => {
+    $("w" + i).addEventListener("input", () => { $("n" + i).value = (+$("w" + i).value).toFixed(2); recompute(); });
+    $("n" + i).addEventListener("input", () => {           // typed weight: clamp to 0–1 and move the slider
+      const v = parseFloat($("n" + i).value); if (isNaN(v)) return;
+      $("w" + i).value = Math.min(1, Math.max(0, v)); recompute(); });
+    $("n" + i).addEventListener("change", () => { $("n" + i).value = (+$("w" + i).value).toFixed(2); });
+    $("c" + i).addEventListener("change", () => {           // choose / un-choose a ratio
+      if ($("c" + i).checked){ if (+$("w" + i).value === 0){ $("w" + i).value = 0.1; } }
+      else $("w" + i).value = 0;
+      $("n" + i).value = (+$("w" + i).value).toFixed(2); showChosen(); recompute(); });
+  });
+  GATES.forEach((g, j) => $("g" + j).addEventListener("change", recompute));
+  $("reset").addEventListener("click", () => { setDefaults(); recompute(); });
+  $("toggleW").addEventListener("click", () => { const open = $("weights").classList.toggle("open"); $("toggleW").textContent = open ? "Hide ratio weights ▴" : "Adjust ratio weights ▾"; });
+  $("mode").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; mode = b.dataset.v;
+    for (const x of $("mode").children) x.classList.toggle("on", x === b); recompute(); });
+  $("year").addEventListener("change", () => { fillFrom(+$("year").value); redraw(); });
+  $("sector").addEventListener("change", redraw);
+  $("listing").addEventListener("change", recompute);
+  $("topn").addEventListener("change", () => { const y = +$("year").value; leaderboard(y, ALL[y] || []); });
+  $("search").addEventListener("input", () => { const y = +$("year").value; table(y, ALL[y] || []); });
+  $("firm").addEventListener("change", () => selectFirm($("firm").value));
+  $("fromYear").addEventListener("change", () => movers(+$("year").value));
+  document.addEventListener("click", e => {
+    const el = e.target.closest("[data-firm]"); if (!el) return;
+    selectFirm(el.dataset.firm);
+    if (el.closest("#table, .mv")) $("firm").closest(".panel").scrollIntoView({behavior:"smooth", block:"start"});   // jump up to the firm panel
+  });
+
+  fillFrom(+$("year").value);
+  recompute();
+})();
+</script>
+</body>
+</html>
